@@ -7,9 +7,7 @@ class _DummyEstimator(DPEstimator):
     def __init__(self, marker="default"):
         self.marker = marker
 
-    def make(
-        self, input_domain, input_metric, output_measure, d_in, d_out
-    ):
+    def make(self, input_domain, input_metric, output_measure, d_in, d_out):
         raise NotImplementedError
 
     def _ingest_release(self, release):
@@ -25,9 +23,7 @@ class _CountEstimator(DPEstimator):
     def __init__(self, scale=1.0):
         self.scale = scale
 
-    def make(
-        self, input_domain, input_metric, output_measure, d_in, d_out
-    ):
+    def make(self, input_domain, input_metric, output_measure, d_in, d_out):
         import opendp.prelude as dp
 
         return (
@@ -46,7 +42,12 @@ def test_sklearn_estimator_is_abstract():
 
     with pytest.raises(NotImplementedError):
         DPEstimator.make(
-            _DummyEstimator(), None, None, None, 1, 1  # type: ignore[arg-type]
+            _DummyEstimator(),
+            None,
+            None,
+            None,
+            1,
+            1,  # type: ignore[arg-type]
         )
     with pytest.raises(NotImplementedError):
         DPEstimator._ingest_release(_DummyEstimator(), None)
@@ -108,9 +109,7 @@ def test_query_sklearn_accepts_transformed_query_and_rejects_partial_chain():
     domain = dp.vector_domain(dp.atom_domain(T=float, nan=False), size=3)
     metric = dp.symmetric_distance()
     transformation = (domain, metric) >> dp.t.then_clamp((0.0, 1.0))
-    transformed = dp.Query(
-        transformation, dp.max_divergence(), d_in=1, d_out=1.0
-    )
+    transformed = dp.Query(transformation, dp.max_divergence(), d_in=1, d_out=1.0)
     assert isinstance(transformed.sklearn(_CountEstimator()), dp.Query)
 
     partial = dp.Query(
@@ -129,9 +128,7 @@ def test_direct_measurement_and_context_fit_share_estimator_path():
     domain = dp.vector_domain(dp.atom_domain(T=int), size=3)
     metric = dp.symmetric_distance()
     estimator = _CountEstimator(scale=1.0)
-    measurement = estimator.make(
-        domain, metric, dp.max_divergence(), 1, 1.0
-    )
+    measurement = estimator.make(domain, metric, dp.max_divergence(), 1, 1.0)
     assert measurement.map(1) <= 1.0
 
     context = dp.Context.compositor(
@@ -143,6 +140,7 @@ def test_direct_measurement_and_context_fit_share_estimator_path():
     )
     assert estimator.fit(context.query()) is estimator  # type: ignore[arg-type]
     assert isinstance(estimator.count_, int)
+
 
 def test_logistic_regression_fit_through_context():
     import opendp.prelude as dp
@@ -158,7 +156,9 @@ def test_logistic_regression_fit_through_context():
     metric = dp.symmetric_distance()
     estimator = LogisticRegression(n_iters=50, learning_rate=0.3, clip_norm=5.0)
 
-    measurement = estimator.make(domain, metric, dp.zero_concentrated_divergence(), 2, 1.0)
+    measurement = estimator.make(
+        domain, metric, dp.zero_concentrated_divergence(), 2, 1.0
+    )
     assert measurement.map(2) <= 1.0
 
     context = dp.Context.compositor(
@@ -170,4 +170,4 @@ def test_logistic_regression_fit_through_context():
     )
     assert estimator.fit(context.query()) is estimator
     assert estimator.coef_.shape == (3,)
-    assert list(estimator.classes_) == [0, 1]           
+    assert list(estimator.classes_) == [0, 1]

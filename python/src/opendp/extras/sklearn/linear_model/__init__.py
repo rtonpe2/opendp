@@ -58,7 +58,7 @@ class LinearRegression:
         if len(x_bounds) != 1:
             msg = f"For now, the x_bounds array must consist of a single tuple, not {x_bounds}"
             raise Exception(msg)
-        
+
         self.measurement = _make_private_theil_sen(
             output_measure=output_measure,
             x_bounds=x_bounds[0],
@@ -139,24 +139,24 @@ class LinearRegression:
 
 class LogisticRegression(DPEstimator):
     """
-        DP Logistic Regression
-    
-        The interface is parallel to that offered by sklearn's
-        `LogisticRegression <https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html>`_.
-        Fitting is performed with differentially private stochastic gradient descent (DP-SGD):
-        each iteration clips per-example gradients to an L2 norm bound, sums them under Gaussian
-        noise, and takes a gradient step, with the privacy budget split across iterations under
-        zero-concentrated differential privacy. After ``fit``, the model exposes ``coef_``,
-        ``intercept_``, and ``classes_``, and supports ``predict`` and ``predict_proba``.
+    DP Logistic Regression
 
-        Data is expected as a single 2-dimensional array whose last column is the binary target
-        and whose remaining columns are the features.
+    The interface is parallel to that offered by sklearn's
+    `LogisticRegression <https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html>`_.
+    Fitting is performed with differentially private stochastic gradient descent (DP-SGD):
+    each iteration clips per-example gradients to an L2 norm bound, sums them under Gaussian
+    noise, and takes a gradient step, with the privacy budget split across iterations under
+    zero-concentrated differential privacy. After ``fit``, the model exposes ``coef_``,
+    ``intercept_``, and ``classes_``, and supports ``predict`` and ``predict_proba``.
 
-        :param n_iters: Number of DP-SGD iterations. Also controls the budget split: the total privacy budget is divided across this many gradient steps, so more iterations means more noise per step.
-        :param learning_rate: Step size for the gradient update applied to the weights each iteration.
-        :param clip_norm: Per-example gradient clipping bound. Each example's gradient is scaled to have L2 norm at most this value, bounding one record's influence on the update. Larger values distort gradients less but require more noise.
-        :param l2_penalty: Strength of optional L2 regularization added to the gradient update. Defaults to 0.0 (no regularization).
-        """
+    Data is expected as a single 2-dimensional array whose last column is the binary target
+    and whose remaining columns are the features.
+
+    :param n_iters: Number of DP-SGD iterations. Also controls the budget split: the total privacy budget is divided across this many gradient steps, so more iterations means more noise per step.
+    :param learning_rate: Step size for the gradient update applied to the weights each iteration.
+    :param clip_norm: Per-example gradient clipping bound. Each example's gradient is scaled to have L2 norm at most this value, bounding one record's influence on the update. Larger values distort gradients less but require more noise.
+    :param l2_penalty: Strength of optional L2 regularization added to the gradient update. Defaults to 0.0 (no regularization).
+    """
 
     def __init__(self, n_iters=100, learning_rate=0.1, clip_norm=1.0, l2_penalty=0.0):
         self.n_iters = n_iters
@@ -181,33 +181,34 @@ class LogisticRegression(DPEstimator):
         """
 
         self._reject_fit_params(fit_params)
-        return X #we are assuming that the last column is the target (open design question)
+        return X  # we are assuming that the last column is the target (open design question)
 
     def make(self, input_domain, input_metric, output_measure, d_in, d_out):
         return _make_private_logistic_regression(
-            input_domain, input_metric, output_measure, d_in, d_out,
-            n_iters=self.n_iters, learning_rate=self.learning_rate,
-            clip_norm=self.clip_norm, l2_penalty=self.l2_penalty,
+            input_domain,
+            input_metric,
+            output_measure,
+            d_in,
+            d_out,
+            n_iters=self.n_iters,
+            learning_rate=self.learning_rate,
+            clip_norm=self.clip_norm,
+            l2_penalty=self.l2_penalty,
         )
 
     def _ingest_release(self, release):
-        import numpy as np
+        np = import_optional_dependency("numpy")
         theta = np.asarray(release)
-        self.coef_ = theta[:-1]        
-        self.intercept_ = theta[-1]    
+        self.coef_ = theta[:-1]
+        self.intercept_ = theta[-1]
         self.classes_ = np.array([0, 1])
 
     def predict_proba(self, X):
-        from scipy.special import expit
-        import numpy as np
+        np = import_optional_dependency("numpy")
+        special = import_optional_dependency("scipy.special")
         Xb = np.hstack([np.asarray(X), np.ones((len(X), 1))])
-        p = expit(Xb @ np.concatenate([self.coef_, [self.intercept_]]))
+        p = special.expit(Xb @ np.concatenate([self.coef_, [self.intercept_]]))
         return np.column_stack([1 - p, p])
 
     def predict(self, X):
         return (self.predict_proba(X)[:, 1] >= 0.5).astype(int)
-
-        
-
-        
-        
