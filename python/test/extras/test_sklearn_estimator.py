@@ -144,8 +144,10 @@ def test_direct_measurement_and_context_fit_share_estimator_path():
 
 def test_logistic_regression_fit_through_context():
     import opendp.prelude as dp
-    import numpy as np
     from opendp.extras.sklearn.linear_model import LogisticRegression
+
+    np = pytest.importorskip("numpy")
+    pytest.importorskip("scipy")
 
     rng = np.random.default_rng(0)
     X = rng.standard_normal((100, 3))
@@ -168,6 +170,12 @@ def test_logistic_regression_fit_through_context():
         privacy_loss=dp.loss_of(rho=1.0),
         split_evenly_over=1,
     )
-    assert estimator.fit(context.query()) is estimator
+    assert estimator.fit(context.query()) is estimator  # type: ignore[arg-type]
     assert estimator.coef_.shape == (3,)
     assert list(estimator.classes_) == [0, 1]
+
+    features = data[:, :-1]
+    proba = estimator.predict_proba(features)
+    assert proba.shape == (100, 2)
+    preds = estimator.predict(features)
+    assert set(np.unique(preds)).issubset({0, 1})

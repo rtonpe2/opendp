@@ -31,6 +31,7 @@ def log_regression_train(
     learning_rate,
     l2_penalty,
 ):
+    dp.assert_features("contrib", "idealized-numerics")
 
     np = import_optional_dependency("numpy")
     theta = np.zeros(d + 1)
@@ -100,6 +101,22 @@ def make_private_logistic_regression(
 
     desc = input_domain.descriptor
     n, d = desc.size, desc.num_columns - 1
+
+    if n is None:
+        raise ValueError("input_domain must have known size (sized data required)")
+    if n_iters < 1:
+        raise ValueError(f"n_iters must be >= 1, got {n_iters}")
+    if learning_rate <= 0:
+        raise ValueError(f"learning_rate must be > 0, got {learning_rate}")
+    if clip_norm <= 0:
+        raise ValueError(f"clip_norm must be > 0, got {clip_norm}")
+    if l2_penalty < 0:
+        raise ValueError(f"l2_penalty must be >= 0, got {l2_penalty}")
+    if d_in % 2 != 0:
+        raise ValueError(
+            f"For sized data, d_in must be even: one change is a substitution "
+            f"affecting 2 rows. Got d_in={d_in}."
+        )
 
     rho_per_step = dp.binary_search_param(
         lambda r: dp.c.make_adaptive_composition(
